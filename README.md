@@ -6,8 +6,9 @@ Atlassian Products client, written in Go
 
 - **Jira Cloud API v3** support
   - Project management (create, read, update, delete, search)
-  - Issue management (search with JQL, get issue details)
+  - Issue management (search with JQL, get issue details, comments, worklogs, changelog)
   - Authentication (Basic Auth, Token Auth)
+- **Daily Report Tool** - Automated Jira daily reports posted to Microsoft Teams
 - Type-safe API clients with comprehensive error handling
 - Full test coverage with unit tests
 - Examples for common use cases
@@ -147,6 +148,9 @@ jira/v3/
 ├── issue/          # Issue API client
 ├── responsetypes/  # Common response type definitions
 └── utils/          # Utility functions and constants
+
+cmd/
+└── jira-daily-report/  # Daily report tool for posting to Microsoft Teams
 ```
 
 ## Testing
@@ -162,6 +166,26 @@ Run tests with coverage:
 ```bash
 go test -cover ./jira/v3/...
 ```
+
+## Daily Report Tool
+
+The project includes a command-line tool for generating daily Jira reports and posting them to Microsoft Teams.
+
+### Quick Start
+
+```bash
+# Set environment variables
+export JIRA_HOST="https://your-domain.atlassian.net"
+export JIRA_USERNAME="your-email@example.com"
+export JIRA_PASSWORD="your-api-token"
+export JIRA_PROJECT="PROJ"
+export TEAMS_WEBHOOK_URL="https://your-webhook-url"
+
+# Run the daily report
+go run ./cmd/jira-daily-report/main.go
+```
+
+See [cmd/jira-daily-report/README.md](cmd/jira-daily-report/README.md) for detailed documentation.
 
 ## Examples
 
