@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ducminhgd/go-atlassian/jira/v3/auth"
+	"github.com/ducminhgd/go-atlassian/jira/v3/utils"
 )
 
 func TestService_SearchJQL(t *testing.T) {
@@ -106,10 +107,10 @@ func TestService_SearchJQL_MaxResultsLimit(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var request JQLSearchRequest
 		json.NewDecoder(r.Body).Decode(&request)
-		
-		// Verify max results is capped at 100
-		if request.MaxResults != 100 {
-			t.Errorf("Expected MaxResults to be capped at 100, got %d", request.MaxResults)
+
+		// Verify max results is capped at MAX_RESULTS_DEFAULT when exceeding MAX_RESULTS
+		if request.MaxResults != utils.MAX_RESULTS_DEFAULT {
+			t.Errorf("Expected MaxResults to be capped at %d, got %d", utils.MAX_RESULTS_DEFAULT, request.MaxResults)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -122,7 +123,97 @@ func TestService_SearchJQL_MaxResultsLimit(t *testing.T) {
 
 	request := JQLSearchRequest{
 		JQL:        "project = TEST",
-		MaxResults: 200, // Should be capped at 100
+		MaxResults: 6000, // Should be capped at MAX_RESULTS_DEFAULT since it exceeds MAX_RESULTS
+	}
+
+	_, err := service.SearchJQL(context.Background(), request)
+	if err != nil {
+		t.Fatalf("SearchJQL failed: %v", err)
+	}
+}
+
+func TestService_SearchJQL_DefaultMaxResults(t *testing.T) {
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request JQLSearchRequest
+		json.NewDecoder(r.Body).Decode(&request)
+
+		// Verify max results defaults to MAX_RESULTS_DEFAULT when not specified or zero
+		if request.MaxResults != utils.MAX_RESULTS_DEFAULT {
+			t.Errorf("Expected MaxResults to default to %d, got %d", utils.MAX_RESULTS_DEFAULT, request.MaxResults)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(JQLSearchResponse{})
+	}))
+	defer server.Close()
+
+	auth := auth.NewBasicAuth("test", "test")
+	service := NewService(nil, server.URL, auth)
+
+	request := JQLSearchRequest{
+		JQL:        "project = TEST",
+		MaxResults: 0, // Should default to MAX_RESULTS_DEFAULT
+	}
+
+	_, err := service.SearchJQL(context.Background(), request)
+	if err != nil {
+		t.Fatalf("SearchJQL failed: %v", err)
+	}
+}
+
+func TestService_SearchJQL_NegativeMaxResults(t *testing.T) {
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request JQLSearchRequest
+		json.NewDecoder(r.Body).Decode(&request)
+
+		// Verify negative max results defaults to MAX_RESULTS_DEFAULT
+		if request.MaxResults != utils.MAX_RESULTS_DEFAULT {
+			t.Errorf("Expected MaxResults to default to %d for negative value, got %d", utils.MAX_RESULTS_DEFAULT, request.MaxResults)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(JQLSearchResponse{})
+	}))
+	defer server.Close()
+
+	auth := auth.NewBasicAuth("test", "test")
+	service := NewService(nil, server.URL, auth)
+
+	request := JQLSearchRequest{
+		JQL:        "project = TEST",
+		MaxResults: -10, // Should default to MAX_RESULTS_DEFAULT
+	}
+
+	_, err := service.SearchJQL(context.Background(), request)
+	if err != nil {
+		t.Fatalf("SearchJQL failed: %v", err)
+	}
+}
+
+func TestService_SearchJQL_ValidMaxResults(t *testing.T) {
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request JQLSearchRequest
+		json.NewDecoder(r.Body).Decode(&request)
+
+		// Verify valid max results is preserved
+		if request.MaxResults != 100 {
+			t.Errorf("Expected MaxResults to be 100, got %d", request.MaxResults)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(JQLSearchResponse{})
+	}))
+	defer server.Close()
+
+	auth := auth.NewBasicAuth("test", "test")
+	service := NewService(nil, server.URL, auth)
+
+	request := JQLSearchRequest{
+		JQL:        "project = TEST",
+		MaxResults: 100, // Valid value, should be preserved
 	}
 
 	_, err := service.SearchJQL(context.Background(), request)
