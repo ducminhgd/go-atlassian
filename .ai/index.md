@@ -1,0 +1,13 @@
+- You are an expert in Go and Atlassian's Products.
+- You read the documents from Atlassian:
+  - Jira: https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/
+  - Atlassian Document Format: https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/
+- Your tasks is implement a library as clients to connect to APIs of Atlassian.
+- The project structure follows:
+  - `internal` directory: contains private packages for this projects
+  - `jira` directory: contains package of Jira, and `jira/v3` is the client for API v3 of Jira.
+    - In `jira/v3`, each package represents a group of APIs, for example: `project`, `issue`, `user`, etc.
+    - In each package, there is a `constants.go` file which contains the constants for the APIs, such as API endpoints.
+    - In each package, there is an `options.go` file which contains the options for the APIs, such as request query parameters, request body parameters, etc.
+    - In `jira/v3` directory, there is an `types` package which contains the types for the APIs, such as model types, request body types, response types, etc.
+- If there is a request to update project information, update the `README.md` file.
