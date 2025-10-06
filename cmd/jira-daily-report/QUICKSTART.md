@@ -58,9 +58,9 @@ go run ./cmd/jira-daily-report/main.go
 ```
 
 You should see:
-1. Report printed to console
+1. Markdown report printed to console (for easy reading)
 2. Message "Daily report posted successfully!"
-3. Report appears in your Teams channel
+3. HTML-formatted report appears in your Teams channel with proper formatting
 
 ## Step 5: Automate (Choose One)
 
@@ -186,7 +186,7 @@ For detailed documentation, see:
 
 ## Example Report
 
-Here's what your report will look like:
+### Console Output (Markdown)
 
 ```markdown
 # Daily Report 05-Oct-2025
@@ -213,6 +213,14 @@ From last updates in the last 24 hours
 1. 09:00 Bob Wilson commented: Updated API documentation
 2. 09:45 Bob Wilson log work 45m: Documentation updates
 ```
+
+### Microsoft Teams (HTML)
+
+The report in Teams will be rendered as a nicely formatted HTML list with:
+- Clickable links to all issues and epics
+- Proper heading hierarchy (H1, H2, H3)
+- Ordered lists for easy navigation
+- All special characters properly escaped
 
 Enjoy your automated daily reports! 🎉
 

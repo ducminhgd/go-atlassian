@@ -26,15 +26,18 @@ The Jira Daily Report tool automatically generates daily reports from Jira work 
    - Sorts Epic groups alphabetically
 
 4. ✅ **Report Generation**
-   - Generates markdown-formatted reports
-   - Follows the template format from `.ai/jira-daily-report-template.md`
+   - Generates reports in dual formats:
+     - **Markdown** for console output (easy reading in terminal)
+     - **HTML** for Microsoft Teams (better rendering with proper formatting)
+   - Follows the template format from `.ai/jira-daily-report-template.html`
    - Includes timestamps in configurable timezone
    - Truncates long comments/worklogs for readability
    - Includes clickable links to issues and epics
+   - Properly escapes HTML special characters
 
 5. ✅ **Microsoft Teams Integration**
-   - Posts reports via incoming webhook
-   - Uses Adaptive Cards for better formatting
+   - Posts HTML-formatted reports via incoming webhook
+   - Uses MessageCard format for proper HTML rendering
    - Handles errors gracefully
    - Supports workflow configuration via environment variables
 
@@ -97,7 +100,9 @@ The workflow runs automatically at 9 AM UTC on weekdays, or can be triggered man
 
 ## Report Format
 
-The generated report follows this structure:
+The tool generates reports in two formats:
+
+### Console Output (Markdown)
 
 ```markdown
 # Daily Report DD-MMM-YYYY
@@ -116,6 +121,28 @@ From last updates in the last 24 hours
 ### [Bug | BUG-789 Done: Bug Summary](https://jira.example.com/browse/BUG-789)
 
 1. 10:15 Alice Johnson commented: Fixed the issue
+```
+
+### Microsoft Teams (HTML)
+
+```html
+<h1>Daily Report DD-MMM-YYYY</h1>
+<p>From last updates in the last 24 hours</p>
+
+<ol>
+  <li>
+    <h2><a href="https://jira.example.com/browse/EPIC-123">EPIC-123 In Progress: Epic Summary</a></h2>
+    <ol>
+      <li>
+        <h3><a href="https://jira.example.com/browse/TASK-456">[Task | TASK-456 In Progress: Task Summary]</a></h3>
+        <ol>
+          <li>14:30 John Doe commented: This is a comment</li>
+          <li>15:45 Jane Smith log work 2h: Worked on implementation</li>
+        </ol>
+      </li>
+    </ol>
+  </li>
+</ol>
 ```
 
 ## Technical Details
@@ -151,6 +178,7 @@ The tool handles both plain text and Atlassian Document Format (ADF) for comment
 - Recursively extracts text from ADF structure
 - Handles nested content nodes
 - Preserves readability while truncating long text
+- Escapes HTML special characters for safe rendering in Teams
 
 ### Epic Detection
 The tool identifies Epics by:

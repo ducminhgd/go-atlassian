@@ -3,4 +3,6 @@ package utils
 const (
 	MAX_RESULTS         = 5_000
 	MAX_RESULTS_DEFAULT = 1_000
+
+	JIRATIMEFORMAT = "2006-01-02T15:04:05.000-0700"
 )

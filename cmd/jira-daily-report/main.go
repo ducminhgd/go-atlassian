@@ -14,29 +14,30 @@ import (
 
 	"github.com/ducminhgd/go-atlassian/jira/v3/auth"
 	"github.com/ducminhgd/go-atlassian/jira/v3/issue"
+	"github.com/ducminhgd/go-atlassian/jira/v3/utils"
 )
 
 // Config holds the configuration for the daily report
 type Config struct {
-	JiraHost            string
-	JiraUsername        string
-	JiraPassword        string
-	JiraProject         string
-	TeamsWebhookURL     string
-	ReportTimezone      string
-	LookbackHours       int
+	JiraHost        string
+	JiraUsername    string
+	JiraPassword    string
+	JiraProject     string
+	TeamsWebhookURL string
+	ReportTimezone  string
+	LookbackHours   int
 }
 
 // loadConfig loads configuration from environment variables
 func loadConfig() (*Config, error) {
 	config := &Config{
-		JiraHost:            os.Getenv("JIRA_HOST"),
-		JiraUsername:        os.Getenv("JIRA_USERNAME"),
-		JiraPassword:        os.Getenv("JIRA_PASSWORD"),
-		JiraProject:         os.Getenv("JIRA_PROJECT"),
-		TeamsWebhookURL:     os.Getenv("TEAMS_WEBHOOK_URL"),
-		ReportTimezone:      os.Getenv("REPORT_TIMEZONE"),
-		LookbackHours:       24,
+		JiraHost:        os.Getenv("JIRA_HOST"),
+		JiraUsername:    os.Getenv("JIRA_USERNAME"),
+		JiraPassword:    os.Getenv("JIRA_PASSWORD"),
+		JiraProject:     os.Getenv("JIRA_PROJECT"),
+		TeamsWebhookURL: os.Getenv("TEAMS_WEBHOOK_URL"),
+		ReportTimezone:  os.Getenv("REPORT_TIMEZONE"),
+		LookbackHours:   24,
 	}
 
 	if config.JiraHost == "" {
@@ -100,24 +101,24 @@ func main() {
 	issueService := issue.NewService(client, config.JiraHost, authenticator)
 
 	// Generate report
-	report, err := generateDailyReport(context.Background(), issueService, config)
+	markdownReport, htmlReport, err := generateDailyReport(context.Background(), issueService, config)
 	if err != nil {
 		log.Fatalf("Failed to generate report: %v", err)
 	}
 
-	// Print report to console
-	fmt.Println(report)
+	// Print markdown report to console
+	fmt.Println(markdownReport)
 
-	// Post to Microsoft Teams
-	if err := postToTeams(config.TeamsWebhookURL, report); err != nil {
+	// Post HTML report to Microsoft Teams Workflow
+	if err := postToTeams(config.TeamsWebhookURL, htmlReport); err != nil {
 		log.Fatalf("Failed to post to Teams: %v", err)
 	}
 
 	log.Println("Daily report posted successfully!")
 }
 
-// generateDailyReport generates the daily report
-func generateDailyReport(ctx context.Context, issueService *issue.Service, config *Config) (string, error) {
+// generateDailyReport generates the daily report in both markdown and HTML formats
+func generateDailyReport(ctx context.Context, issueService *issue.Service, config *Config) (string, string, error) {
 	// Calculate time range
 	now := time.Now()
 	lookbackTime := now.Add(-time.Duration(config.LookbackHours) * time.Hour)
@@ -142,7 +143,7 @@ func generateDailyReport(ctx context.Context, issueService *issue.Service, confi
 
 	response, err := issueService.SearchJQL(ctx, searchRequest)
 	if err != nil {
-		return "", fmt.Errorf("failed to search issues: %w", err)
+		return "", "", fmt.Errorf("failed to search issues: %w", err)
 	}
 
 	// Process issues and group by epic
@@ -181,8 +182,11 @@ func generateDailyReport(ctx context.Context, issueService *issue.Service, confi
 		}
 	}
 
-	// Generate markdown report
-	return formatReport(epicGroups, noEpicIssues, now, config.ReportTimezone), nil
+	// Generate markdown report for console and HTML for Teams
+	markdownReport := formatMarkdownReport(epicGroups, noEpicIssues, now, config.ReportTimezone)
+	htmlReport := formatHTMLReport(epicGroups, noEpicIssues, now, config.ReportTimezone)
+
+	return markdownReport, htmlReport, nil
 }
 
 // processIssue processes a single issue and extracts relevant updates
@@ -198,7 +202,7 @@ func processIssue(iss issue.Issue, lookbackTime time.Time, jiraHost string) Issu
 
 	// Process comments
 	for _, comment := range iss.Fields.Comment.Comments {
-		commentTime, err := time.Parse(time.RFC3339, comment.Created)
+		commentTime, err := time.Parse(utils.JIRATIMEFORMAT, comment.Created)
 		if err == nil && commentTime.After(lookbackTime) {
 			content := extractTextFromBody(comment.Body)
 			issueUpdate.Updates = append(issueUpdate.Updates, Update{
@@ -215,7 +219,7 @@ func processIssue(iss issue.Issue, lookbackTime time.Time, jiraHost string) Issu
 
 	// Process worklogs
 	for _, worklog := range iss.Fields.Worklog.Worklogs {
-		worklogTime, err := time.Parse(time.RFC3339, worklog.Created)
+		worklogTime, err := time.Parse(utils.JIRATIMEFORMAT, worklog.Created)
 		if err == nil && worklogTime.After(lookbackTime) {
 			content := extractTextFromBody(worklog.Comment)
 			issueUpdate.Updates = append(issueUpdate.Updates, Update{
@@ -287,8 +291,8 @@ func extractTextFromADF(node map[string]interface{}) string {
 	return strings.TrimSpace(text.String())
 }
 
-// formatReport formats the report in markdown
-func formatReport(epicGroups map[string]*EpicGroup, noEpicIssues []IssueUpdate, reportDate time.Time, timezone string) string {
+// formatMarkdownReport formats the report in markdown
+func formatMarkdownReport(epicGroups map[string]*EpicGroup, noEpicIssues []IssueUpdate, reportDate time.Time, timezone string) string {
 	var report strings.Builder
 
 	// Load timezone
@@ -320,7 +324,7 @@ func formatReport(epicGroups map[string]*EpicGroup, noEpicIssues []IssueUpdate, 
 		})
 
 		for _, iss := range group.Issues {
-			writeIssueSection(&report, iss, loc)
+			writeMarkdownIssueSection(&report, iss, loc)
 		}
 	}
 
@@ -334,26 +338,125 @@ func formatReport(epicGroups map[string]*EpicGroup, noEpicIssues []IssueUpdate, 
 		})
 
 		for _, iss := range noEpicIssues {
-			writeIssueSection(&report, iss, loc)
+			writeMarkdownIssueSection(&report, iss, loc)
 		}
 	}
 
 	return report.String()
 }
 
-// writeIssueSection writes a single issue section to the report
-func writeIssueSection(report *strings.Builder, iss IssueUpdate, loc *time.Location) {
+// writeMarkdownIssueSection writes a single issue section to the markdown report
+func writeMarkdownIssueSection(report *strings.Builder, iss IssueUpdate, loc *time.Location) {
 	report.WriteString(fmt.Sprintf("### [%s | %s %s: %s](%s)\n\n", iss.IssueType, iss.Key, iss.Status, iss.Summary, iss.URL))
 
 	for i, update := range iss.Updates {
 		updateTime := update.Time.In(loc)
 		if update.Type == "comment" {
-			report.WriteString(fmt.Sprintf("%d. %s %s commented: %s\n", i+1, updateTime.Format("15:04"), update.AuthorName, truncateText(update.Content, 200)))
+			report.WriteString(fmt.Sprintf("%d. %s **%s** commented: %s\n", i+1, updateTime.Format("15:04"), update.AuthorName, truncateText(update.Content, 200)))
 		} else if update.Type == "worklog" {
-			report.WriteString(fmt.Sprintf("%d. %s %s log work %s: %s\n", i+1, updateTime.Format("15:04"), update.AuthorName, update.TimeSpent, truncateText(update.Content, 200)))
+			report.WriteString(fmt.Sprintf("%d. %s **%s** log work %s: %s\n", i+1, updateTime.Format("15:04"), update.AuthorName, update.TimeSpent, truncateText(update.Content, 200)))
 		}
 	}
 	report.WriteString("\n")
+}
+
+// formatHTMLReport formats the report in HTML with ordered lists
+func formatHTMLReport(epicGroups map[string]*EpicGroup, noEpicIssues []IssueUpdate, reportDate time.Time, timezone string) string {
+	var report strings.Builder
+
+	// Load timezone
+	loc, err := time.LoadLocation(timezone)
+	if err != nil {
+		loc = time.UTC
+	}
+	reportDate = reportDate.In(loc)
+
+	// Title
+	report.WriteString(fmt.Sprintf("<h1>Daily Report %s</h1>\n", reportDate.Format("02-Jan-2006")))
+	report.WriteString("<p>From last updates in the last 24 hours</p>\n\n")
+	report.WriteString("<ol>\n")
+
+	// Sort epic groups by epic key
+	var epicKeys []string
+	for key := range epicGroups {
+		epicKeys = append(epicKeys, key)
+	}
+	sort.Strings(epicKeys)
+
+	// Write epic groups
+	for _, epicKey := range epicKeys {
+		group := epicGroups[epicKey]
+		report.WriteString("  <li>\n")
+		report.WriteString(fmt.Sprintf("    <h2><a href=\"%s\">%s %s: %s</a></h2>\n",
+			escapeHTML(group.EpicURL), escapeHTML(group.EpicKey), escapeHTML(group.EpicStatus), escapeHTML(group.EpicSummary)))
+		report.WriteString("    <ol>\n")
+
+		// Sort issues by last updated time
+		sort.Slice(group.Issues, func(i, j int) bool {
+			return group.Issues[i].LastUpdated.After(group.Issues[j].LastUpdated)
+		})
+
+		for _, iss := range group.Issues {
+			writeHTMLIssueSection(&report, iss, loc)
+		}
+
+		report.WriteString("    </ol>\n")
+		report.WriteString("  </li>\n\n")
+	}
+
+	// Write "Anything else" section
+	if len(noEpicIssues) > 0 {
+		report.WriteString("  <li>\n")
+		report.WriteString("    <h2>Anything else</h2>\n")
+		report.WriteString("    <ol>\n")
+
+		// Sort issues by last updated time
+		sort.Slice(noEpicIssues, func(i, j int) bool {
+			return noEpicIssues[i].LastUpdated.After(noEpicIssues[j].LastUpdated)
+		})
+
+		for _, iss := range noEpicIssues {
+			writeHTMLIssueSection(&report, iss, loc)
+		}
+
+		report.WriteString("    </ol>\n")
+		report.WriteString("  </li>\n")
+	}
+
+	report.WriteString("</ol>\n")
+	return report.String()
+}
+
+// writeHTMLIssueSection writes a single issue section to the HTML report
+func writeHTMLIssueSection(report *strings.Builder, iss IssueUpdate, loc *time.Location) {
+	report.WriteString("      <li>\n")
+	report.WriteString(fmt.Sprintf("        <h3><a href=\"%s\">[%s | %s %s: %s]</a></h3>\n",
+		escapeHTML(iss.URL), escapeHTML(iss.IssueType), escapeHTML(iss.Key), escapeHTML(iss.Status), escapeHTML(iss.Summary)))
+	report.WriteString("        <ol>\n")
+
+	for _, update := range iss.Updates {
+		updateTime := update.Time.In(loc)
+		if update.Type == "comment" {
+			report.WriteString(fmt.Sprintf("          <li>%s %s commented: %s</li>\n",
+				updateTime.Format("15:04"), escapeHTML(update.AuthorName), escapeHTML(truncateText(update.Content, 200))))
+		} else if update.Type == "worklog" {
+			report.WriteString(fmt.Sprintf("          <li>%s %s log work %s: %s</li>\n",
+				updateTime.Format("15:04"), escapeHTML(update.AuthorName), escapeHTML(update.TimeSpent), escapeHTML(truncateText(update.Content, 200))))
+		}
+	}
+
+	report.WriteString("        </ol>\n")
+	report.WriteString("      </li>\n")
+}
+
+// escapeHTML escapes special HTML characters
+func escapeHTML(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, "\"", "&quot;")
+	s = strings.ReplaceAll(s, "'", "&#39;")
+	return s
 }
 
 // truncateText truncates text to a maximum length
@@ -365,28 +468,12 @@ func truncateText(text string, maxLen int) string {
 	return text[:maxLen] + "..."
 }
 
-// postToTeams posts the report to Microsoft Teams
-func postToTeams(webhookURL, report string) error {
-	// Create Teams message payload
+// postToTeams posts the HTML report to Microsoft Teams Workflow
+func postToTeams(webhookURL, htmlReport string) error {
+	// Microsoft Teams Workflow can accept HTML content in the body field
+	// Send as a simple message with HTML body
 	payload := map[string]interface{}{
-		"type": "message",
-		"attachments": []map[string]interface{}{
-			{
-				"contentType": "application/vnd.microsoft.card.adaptive",
-				"content": map[string]interface{}{
-					"type": "AdaptiveCard",
-					"body": []map[string]interface{}{
-						{
-							"type": "TextBlock",
-							"text": report,
-							"wrap": true,
-						},
-					},
-					"$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-					"version": "1.2",
-				},
-			},
-		},
+		"body": htmlReport,
 	}
 
 	payloadBytes, err := json.Marshal(payload)
@@ -400,10 +487,9 @@ func postToTeams(webhookURL, report string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
 		return fmt.Errorf("Teams webhook returned status %d", resp.StatusCode)
 	}
 
 	return nil
 }
-

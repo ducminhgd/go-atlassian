@@ -7,8 +7,8 @@ A tool to generate daily reports from Jira and post them to Microsoft Teams.
 - Collects information from work items updated in the last 24 hours
 - Groups issues by Epic
 - Includes comments and worklogs from the last 24 hours
-- Generates markdown-formatted reports
-- Posts reports to Microsoft Teams via webhook
+- Generates reports in both Markdown (console) and HTML (Teams) formats
+- Posts HTML-formatted reports to Microsoft Teams via webhook
 
 ## Configuration
 
@@ -131,7 +131,11 @@ jobs:
 
 ## Report Format
 
-The generated report follows this format:
+The tool generates reports in two formats:
+
+### Console Output (Markdown)
+
+The console displays a markdown-formatted report for easy reading:
 
 ```markdown
 # Daily Report DD-MMM-YYYY
@@ -152,6 +156,41 @@ From last updates in the last 24 hours
 
 1. 10:15 Alice Johnson commented: Fixed the issue
 2. 11:30 Alice Johnson log work 1h 30m: Testing and verification
+```
+
+### Microsoft Teams (HTML)
+
+The report posted to Teams uses HTML format for better rendering:
+
+```html
+<h1>Daily Report DD-MMM-YYYY</h1>
+<p>From last updates in the last 24 hours</p>
+
+<ol>
+  <li>
+    <h2><a href="https://jira.example.com/browse/EPIC-123">EPIC-123 In Progress: Epic Summary</a></h2>
+    <ol>
+      <li>
+        <h3><a href="https://jira.example.com/browse/TASK-456">[Task | TASK-456 In Progress: Task Summary]</a></h3>
+        <ol>
+          <li>14:30 John Doe commented: This is a comment</li>
+          <li>15:45 Jane Smith log work 2h: Worked on implementation</li>
+        </ol>
+      </li>
+    </ol>
+  </li>
+  <li>
+    <h2>Anything else</h2>
+    <ol>
+      <li>
+        <h3><a href="https://jira.example.com/browse/BUG-789">[Bug | BUG-789 Done: Bug Summary]</a></h3>
+        <ol>
+          <li>10:15 Alice Johnson commented: Fixed the issue</li>
+        </ol>
+      </li>
+    </ol>
+  </li>
+</ol>
 ```
 
 ## Troubleshooting
