@@ -7,8 +7,10 @@ A tool to generate daily reports from Jira and post them to Microsoft Teams.
 - Collects information from work items updated in the last 24 hours
 - Groups issues by Epic
 - Includes comments and worklogs from the last 24 hours
-- Generates reports in both Markdown (console) and HTML (Teams) formats
-- Posts HTML-formatted reports to Microsoft Teams via webhook
+- Generates reports in Markdown, HTML, and AdaptiveCard formats
+- Posts AdaptiveCard-formatted reports to Microsoft Teams via webhook (default)
+- AdaptiveCards support full-width display in Teams for better readability
+- Backward compatibility with HTML format
 
 ## Configuration
 

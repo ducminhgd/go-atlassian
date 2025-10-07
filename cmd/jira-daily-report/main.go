@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -27,12 +26,9 @@ func main() {
 		log.Fatalf("Failed to generate report: %v", err)
 	}
 
-	// Print markdown report to console
-	fmt.Println(report.Markdown)
-
-	// Publish to webhook
+	// Publish AdaptiveCard to webhook (default format for Teams)
 	publisher := jirareport.NewPublisher(config.WebhookURL)
-	if err := publisher.Publish(report.HTML); err != nil {
+	if err := publisher.PublishAdaptiveCard(report.AdaptiveCard); err != nil {
 		log.Fatalf("Failed to publish report: %v", err)
 	}
 

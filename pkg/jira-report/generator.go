@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ducminhgd/go-atlassian/internal/msteams"
 	"github.com/ducminhgd/go-atlassian/jira/v3/auth"
 	"github.com/ducminhgd/go-atlassian/jira/v3/issue"
 	"github.com/ducminhgd/go-atlassian/jira/v3/utils"
@@ -100,13 +101,13 @@ func (g *Generator) Generate(ctx context.Context) (*Report, error) {
 		}
 	}
 
-	// Generate markdown and HTML reports
+	// Generate markdown and AdaptiveCard reports
 	markdownReport := formatMarkdownReport(epicGroups, noEpicIssues, now, g.config.Timezone)
-	htmlReport := formatHTMLReport(epicGroups, noEpicIssues, now, g.config.Timezone)
+	adaptiveCardReport := g.formatAdaptiveCardReport(epicGroups, noEpicIssues, now, g.config.Timezone)
 
 	return &Report{
-		Markdown: markdownReport,
-		HTML:     htmlReport,
+		Markdown:     markdownReport,
+		AdaptiveCard: adaptiveCardReport,
 	}, nil
 }
 
@@ -319,4 +320,55 @@ func truncateText(text string, maxLen int) string {
 		return text
 	}
 	return text[:maxLen] + "..."
+}
+
+// formatAdaptiveCardReport converts internal types to msteams types and formats as AdaptiveCard
+func (g *Generator) formatAdaptiveCardReport(epicGroups map[string]*EpicGroup, noEpicIssues []IssueUpdate, reportDate time.Time, timezone string) msteams.AdaptiveCard {
+	// Convert internal types to msteams types
+	msteamsEpicGroups := make(map[string]*msteams.EpicGroup)
+	for key, group := range epicGroups {
+		msteamsEpicGroups[key] = &msteams.EpicGroup{
+			EpicKey:     group.EpicKey,
+			EpicSummary: group.EpicSummary,
+			EpicStatus:  group.EpicStatus,
+			EpicURL:     group.EpicURL,
+			Issues:      convertIssueUpdates(group.Issues),
+		}
+	}
+
+	msteamsNoEpicIssues := convertIssueUpdates(noEpicIssues)
+
+	return msteams.FormatJiraReportAsAdaptiveCard(msteamsEpicGroups, msteamsNoEpicIssues, reportDate, timezone)
+}
+
+// convertIssueUpdates converts internal IssueUpdate slice to msteams IssueUpdate slice
+func convertIssueUpdates(issues []IssueUpdate) []msteams.IssueUpdate {
+	var msteamsIssues []msteams.IssueUpdate
+	for _, issue := range issues {
+		msteamsIssues = append(msteamsIssues, msteams.IssueUpdate{
+			Key:         issue.Key,
+			Summary:     issue.Summary,
+			Status:      issue.Status,
+			IssueType:   issue.IssueType,
+			URL:         issue.URL,
+			Updates:     convertUpdates(issue.Updates),
+			LastUpdated: issue.LastUpdated,
+		})
+	}
+	return msteamsIssues
+}
+
+// convertUpdates converts internal Update slice to msteams Update slice
+func convertUpdates(updates []Update) []msteams.Update {
+	var msteamsUpdates []msteams.Update
+	for _, update := range updates {
+		msteamsUpdates = append(msteamsUpdates, msteams.Update{
+			Time:       update.Time,
+			AuthorName: update.AuthorName,
+			Type:       update.Type,
+			Content:    update.Content,
+			TimeSpent:  update.TimeSpent,
+		})
+	}
+	return msteamsUpdates
 }

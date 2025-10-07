@@ -7,10 +7,9 @@ A Go package for generating daily reports from Jira and publishing them to webho
 - Generate daily reports from Jira issues updated in the last N hours
 - Group issues by Epic
 - Include comments and worklogs
-- Generate reports in both Markdown and HTML formats
-- Publish HTML reports to webhooks (Microsoft Teams, Slack, etc.)
+- Generate reports in Markdown and AdaptiveCard formats
+- Publish AdaptiveCard reports to Microsoft Teams webhooks
 - Configurable timezone for timestamps
-- Proper HTML escaping for security
 
 ## Installation
 
@@ -62,9 +61,9 @@ func main() {
     // Print markdown report
     fmt.Println(report.Markdown)
 
-    // Publish to webhook
+    // Publish AdaptiveCard to webhook
     publisher := jirareport.NewPublisher(config.WebhookURL)
-    publisher.Publish(report.HTML)
+    publisher.PublishAdaptiveCard(report.AdaptiveCard)
 }
 ```
 
@@ -137,8 +136,7 @@ if err != nil {
 
 // Use the report however you want
 fmt.Println("Markdown:", report.Markdown)
-fmt.Println("HTML:", report.HTML)
-saveToFile(report.HTML)
+saveToFile(report.Markdown)
 sendEmail(report.Markdown)
 ```
 
@@ -147,13 +145,9 @@ sendEmail(report.Markdown)
 ```go
 report, _ := generator.Generate(ctx)
 
-// Publish to Teams
+// Publish AdaptiveCard to Teams
 teamsPublisher := jirareport.NewPublisher("https://teams-webhook")
-teamsPublisher.Publish(report.HTML)
-
-// Publish to Slack
-slackPublisher := jirareport.NewPublisher("https://slack-webhook")
-slackPublisher.Publish(report.HTML)
+teamsPublisher.PublishAdaptiveCard(report.AdaptiveCard)
 ```
 
 #### Load Configuration from Environment Variables
@@ -259,29 +253,42 @@ From last updates in the last 24 hours
 1. 10:15 **Alice Johnson** commented: Fixed the issue
 ```
 
-### HTML Format
+### AdaptiveCard Format
 
-The HTML format uses ordered lists with automatic numbering:
+The AdaptiveCard format is the recommended format for Microsoft Teams. It provides:
 
-```html
-<h1>Daily Report DD-MMM-YYYY</h1>
-<p>From last updates in the last 24 hours</p>
+- **Full-width display**: Cards stretch to use the full width of the Teams window
+- **Rich formatting**: Better visual hierarchy with proper headings, emphasis, and links
+- **Interactive elements**: Clickable links to open Jira issues directly
+- **Better mobile experience**: Responsive design that works well on mobile devices
 
-<ol>
-  <li>
-    <h2><a href="...">EPIC-123 In Progress: Epic Summary</a></h2>
-    <ol>
-      <li>
-        <h3><a href="...">[Task | TASK-456 In Progress: Task Summary]</a></h3>
-        <ol>
-          <li>14:30 John Doe commented: This is a comment</li>
-          <li>15:45 Jane Smith log work 2h: Worked on implementation</li>
-        </ol>
-      </li>
-    </ol>
-  </li>
-</ol>
+The AdaptiveCard functionality is implemented in the `internal/msteams` package, which provides:
+- `msteams.AdaptiveCard` - Core AdaptiveCard structure
+- `msteams.FormatJiraReportAsAdaptiveCard()` - Formats Jira reports as AdaptiveCards
+- `msteams.Publisher` - Publishes AdaptiveCards to Teams webhooks
+- `msteams.FormatTeamsMessage()` - Creates Teams-compatible messages
+
+Example AdaptiveCard structure:
+```json
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5",
+  "msteams": {
+    "width": "Full"
+  },
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Daily Report 15-Jan-2024",
+      "size": "Large",
+      "weight": "Bolder"
+    }
+  ]
+}
 ```
+
+See `.ai/jira-daily-report-template-adaptivecard.json` for the complete template.
 
 ## API Reference
 
@@ -291,12 +298,12 @@ The HTML format uses ordered lists with automatic numbering:
 Configuration for the report generator.
 
 #### Report
-Contains both Markdown and HTML versions of the report.
+Contains Markdown and AdaptiveCard versions of the report.
 
 ```go
 type Report struct {
-    Markdown string
-    HTML     string
+    Markdown     string
+    AdaptiveCard msteams.AdaptiveCard
 }
 ```
 
@@ -328,8 +335,8 @@ Creates a new runner that combines generation and publishing.
 #### Generator.Generate(ctx context.Context) (*Report, error)
 Generates the daily report.
 
-#### Publisher.Publish(htmlReport string) error
-Publishes the HTML report to the webhook.
+#### Publisher.PublishAdaptiveCard(adaptiveCard msteams.AdaptiveCard) error
+Publishes the AdaptiveCard report to the webhook.
 
 #### Runner.Run(ctx context.Context) (*Report, error)
 Generates and publishes the report in one call.

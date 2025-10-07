@@ -1,6 +1,10 @@
 package jirareport
 
-import "time"
+import (
+	"time"
+
+	"github.com/ducminhgd/go-atlassian/internal/msteams"
+)
 
 // EpicGroup represents a group of issues under an epic
 type EpicGroup struct {
@@ -31,9 +35,8 @@ type Update struct {
 	TimeSpent  string // for worklogs
 }
 
-// Report contains both markdown and HTML versions of the report
+// Report contains markdown and AdaptiveCard versions of the report
 type Report struct {
-	Markdown string
-	HTML     string
+	Markdown     string
+	AdaptiveCard msteams.AdaptiveCard
 }
-
