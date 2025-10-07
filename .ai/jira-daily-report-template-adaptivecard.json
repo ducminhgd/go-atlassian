@@ -1,0 +1,128 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5",
+  "msteams": {
+    "width": "Full"
+  },
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Daily Report DD-MMM-YYYY",
+      "size": "Large",
+      "weight": "Bolder",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "From last updates in the last 24 hours",
+      "size": "Medium",
+      "wrap": true,
+      "spacing": "Small"
+    },
+    {
+      "type": "RichTextBlock",
+      "spacing": "Medium",
+      "separator": true,
+      "inlines": [
+        {
+          "type": "TextRun",
+          "text": "Epic KEY Epic Status: Epic Summary",
+          "weight": "Bolder"
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.OpenUrl",
+          "title": "Open Epic",
+          "url": "Epic URL"
+        }
+      ]
+    },
+    {
+      "type": "RichTextBlock",
+      "spacing": "Small",
+      "inlines": [
+        {
+          "type": "TextRun",
+          "text": "Task Type | Task KEY Task Status: Task Summary",
+          "weight": "Bolder",
+          "color": "Accent"
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.OpenUrl",
+          "title": "Open Issue",
+          "url": "Task URL"
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "spacing": "Small",
+      "style": "emphasis",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "HH:MM Author's name commented: comment-content",
+          "wrap": true,
+          "size": "Small"
+        },
+        {
+          "type": "TextBlock",
+          "text": "HH:MM Author's name log work worklog-time: worklog-content",
+          "wrap": true,
+          "size": "Small"
+        }
+      ]
+    },
+    {
+      "type": "TextBlock",
+      "text": "Anything else",
+      "size": "Medium",
+      "weight": "Bolder",
+      "spacing": "Medium",
+      "separator": true,
+      "wrap": true
+    },
+    {
+      "type": "RichTextBlock",
+      "spacing": "Small",
+      "inlines": [
+        {
+          "type": "TextRun",
+          "text": "Task Type | Task KEY Task Status: Task Summary",
+          "weight": "Bolder",
+          "color": "Accent"
+        }
+      ],
+      "actions": [
+        {
+          "type": "Action.OpenUrl",
+          "title": "Open Issue",
+          "url": "Task URL"
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "spacing": "Small",
+      "style": "emphasis",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "HH:MM Author's name commented: comment-content",
+          "wrap": true,
+          "size": "Small"
+        },
+        {
+          "type": "TextBlock",
+          "text": "HH:MM Author's name log work worklog-time: worklog-content",
+          "wrap": true,
+          "size": "Small"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+name: Daily Jira Report
+
+on:
+  schedule:
+    # Run at 9 AM UTC every weekday (Monday-Friday)
+    - cron: '0 9 * * 1-5'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      
+      - name: Download dependencies
+        run: go mod download
+      
+      - name: Generate and Post Daily Report
+        env:
+          JIRA_HOST: ${{ secrets.JIRA_HOST }}
+          JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
+          JIRA_PASSWORD: ${{ secrets.JIRA_PASSWORD }}
+          JIRA_PROJECT: ${{ secrets.JIRA_PROJECT }}
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          REPORT_TIMEZONE: ${{ vars.REPORT_TIMEZONE || 'UTC' }}
+        run: |
+          echo "Generating daily report for project: $JIRA_PROJECT"
+          go run ./cmd/jira-daily-report/main.go
+          echo "Report generated and posted successfully!"
+      
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Failed to generate or post daily report"
+          echo "Check the logs above for details"
+

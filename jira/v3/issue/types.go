@@ -4,25 +4,25 @@ package issue
 type JQLSearchRequest struct {
 	// Expand options that include additional issue details in the response
 	Expand string `json:"expand,omitempty"`
-	
+
 	// List of fields to return for each issue
 	Fields []string `json:"fields,omitempty"`
-	
+
 	// Whether to use field keys instead of field names in the response
 	FieldsByKeys bool `json:"fieldsByKeys,omitempty"`
-	
+
 	// JQL query string
 	JQL string `json:"jql"`
-	
+
 	// Maximum number of results to return (default: 50, max: 100)
 	MaxResults int `json:"maxResults,omitempty"`
-	
+
 	// Token for pagination to get the next page of results
 	NextPageToken string `json:"nextPageToken,omitempty"`
-	
+
 	// List of properties to return for each issue
 	Properties []string `json:"properties,omitempty"`
-	
+
 	// List of issue IDs to reconcile
 	ReconcileIssues []int `json:"reconcileIssues,omitempty"`
 }
@@ -31,19 +31,19 @@ type JQLSearchRequest struct {
 type JQLSearchResponse struct {
 	// Whether this is the last page of results
 	IsLast bool `json:"isLast"`
-	
+
 	// List of issues returned by the search
 	Issues []Issue `json:"issues"`
-	
+
 	// Maximum number of results that can be returned
 	MaxResults int `json:"maxResults,omitempty"`
-	
+
 	// Token for getting the next page of results
 	NextPageToken string `json:"nextPageToken,omitempty"`
-	
+
 	// Starting index of the results
 	StartAt int `json:"startAt,omitempty"`
-	
+
 	// Total number of issues matching the query
 	Total int `json:"total,omitempty"`
 }
@@ -64,6 +64,9 @@ type Issue struct {
 
 	// The self URL of the issue
 	Self string `json:"self,omitempty"`
+
+	// Changelog information (when expanded)
+	Changelog PageOfChangelogs `json:"changelog,omitempty"`
 }
 
 // IssueFields represents the fields of an issue
@@ -115,6 +118,15 @@ type IssueFields struct {
 
 	// Worklog information
 	Worklog PagedWorklog `json:"worklog,omitempty"`
+
+	// Comment information
+	Comment PagedComment `json:"comment,omitempty"`
+
+	// Created timestamp
+	Created string `json:"created,omitempty"`
+
+	// Updated timestamp
+	Updated string `json:"updated,omitempty"`
 }
 
 // SimpleUser represents a basic user structure
@@ -262,4 +274,64 @@ type Worklog struct {
 	TimeSpentSeconds int         `json:"timeSpentSeconds,omitempty"`
 	ID               string      `json:"id,omitempty"`
 	IssueID          string      `json:"issueId,omitempty"`
+}
+
+// IssueComment represents a single comment on a Jira issue
+type IssueComment struct {
+	Self         string      `json:"self"`
+	ID           string      `json:"id"`
+	Author       SimpleUser  `json:"author"`
+	Body         interface{} `json:"body"`
+	UpdateAuthor SimpleUser  `json:"updateAuthor"`
+	Created      string      `json:"created"`
+	Updated      string      `json:"updated"`
+	JsdPublic    bool        `json:"jsdPublic"`
+}
+
+// PagedComment represents a paged list of comments with pagination information
+type PagedComment struct {
+	StartAt    int            `json:"startAt"`
+	MaxResults int            `json:"maxResults"`
+	Total      int            `json:"total"`
+	Comments   []IssueComment `json:"comments"`
+}
+
+// PageOfChangelogs represents a paged list of changelogs
+type PageOfChangelogs struct {
+	Histories  []Changelog `json:"histories,omitempty"`
+	MaxResults int         `json:"maxResults,omitempty"`
+	StartAt    int         `json:"startAt,omitempty"`
+	Total      int         `json:"total,omitempty"`
+}
+
+// Changelog represents a single changelog entry
+type Changelog struct {
+	ID      string             `json:"id,omitempty"`
+	Author  SimpleUser         `json:"author,omitempty"`
+	Created string             `json:"created,omitempty"`
+	Items   []ChangelogDetails `json:"items,omitempty"`
+}
+
+// ChangelogDetails represents the details of a changelog item
+type ChangelogDetails struct {
+	// The name of the field changed
+	Field string `json:"field,omitempty"`
+
+	// The ID of the field changed
+	FieldID string `json:"fieldId,omitempty"`
+
+	// The type of the field changed
+	FieldType string `json:"fieldtype,omitempty"`
+
+	// The details of the original value
+	From string `json:"from,omitempty"`
+
+	// The details of the original value as a string
+	FromString string `json:"fromString,omitempty"`
+
+	// The details of the new value
+	To string `json:"to,omitempty"`
+
+	// The details of the new value as a string
+	ToString string `json:"toString,omitempty"`
 }
