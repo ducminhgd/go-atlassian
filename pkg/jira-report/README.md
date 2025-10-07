@@ -259,6 +259,7 @@ The AdaptiveCard format is the recommended format for Microsoft Teams. It provid
 
 - **Full-width display**: Cards stretch to use the full width of the Teams window
 - **Rich formatting**: Better visual hierarchy with proper headings, emphasis, and links
+- **Clickable issue keys**: Epic keys and issue keys are wrapped in Markdown-style links `[ISSUE-KEY](URL)` that open directly in Jira
 - **Interactive elements**: Clickable links to open Jira issues directly
 - **Better mobile experience**: Responsive design that works well on mobile devices
 

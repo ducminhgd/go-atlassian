@@ -7,6 +7,7 @@ This package provides Microsoft Teams integration functionality, specifically fo
 - **AdaptiveCard Creation**: Build rich, interactive AdaptiveCards with proper Teams formatting
 - **Full-Width Support**: Cards automatically stretch to use the full width of Teams windows
 - **Jira Report Formatting**: Convert Jira report data into beautifully formatted AdaptiveCards
+- **Clickable Issue Links**: Epic keys and issue keys are wrapped in Markdown-style links `[ISSUE-KEY](URL)` that open directly in Jira
 - **Teams Message Publishing**: Send AdaptiveCards to Teams via webhooks
 - **Type Safety**: Strongly typed structures for all AdaptiveCard elements
 

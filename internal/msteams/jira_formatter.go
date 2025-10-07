@@ -86,27 +86,15 @@ func FormatJiraReportAsAdaptiveCard(epicGroups map[string]*EpicGroup, noEpicIssu
 
 // addEpicSection adds an epic section to the AdaptiveCard
 func addEpicSection(card *AdaptiveCard, group *EpicGroup, loc *time.Location) {
-	// Epic header with link
-	epicText := fmt.Sprintf("%s %s: %s", group.EpicKey, group.EpicStatus, group.EpicSummary)
-	inlines := []AdaptiveCardInline{
-		CreateTextRun(epicText, "Bolder", ""),
-	}
-
-	epicHeader := AdaptiveCardElement{
-		Type:      "RichTextBlock",
-		Spacing:   "Medium",
-		Separator: true,
-		Inlines:   inlines,
-	}
-
-	// Add action for the epic link if URL is available
+	// Epic header with clickable epic key using Markdown-style link
+	var epicText string
 	if group.EpicURL != "" {
-		epicHeader.Actions = []AdaptiveCardAction{
-			CreateOpenUrlAction("Open Epic", group.EpicURL),
-		}
+		epicText = fmt.Sprintf("[%s](%s) %s: %s", group.EpicKey, group.EpicURL, group.EpicStatus, group.EpicSummary)
+	} else {
+		epicText = fmt.Sprintf("%s %s: %s", group.EpicKey, group.EpicStatus, group.EpicSummary)
 	}
 
-	card.Body = append(card.Body, epicHeader)
+	card.AddTextBlock(epicText, "Medium", "Bolder", true)
 
 	// Sort issues by last updated time
 	sort.Slice(group.Issues, func(i, j int) bool {
@@ -142,45 +130,33 @@ func addAnythingElseSection(card *AdaptiveCard, noEpicIssues []IssueUpdate, loc 
 
 // addIssueSection adds an issue section to the AdaptiveCard
 func addIssueSection(card *AdaptiveCard, issue IssueUpdate, loc *time.Location) {
-	// Issue header with link
-	issueText := fmt.Sprintf("%s | %s %s: %s", issue.IssueType, issue.Key, issue.Status, issue.Summary)
-	
-	inlines := []AdaptiveCardInline{
-		CreateTextRun(issueText, "Bolder", "Accent"),
-	}
-
-	issueHeader := AdaptiveCardElement{
-		Type:    "RichTextBlock",
-		Spacing: "Small",
-		Inlines: inlines,
-	}
-
-	// Add action for the issue link if URL is available
+	// Issue header with clickable issue key using Markdown-style link
+	var issueText string
 	if issue.URL != "" {
-		issueHeader.Actions = []AdaptiveCardAction{
-			CreateOpenUrlAction("Open Issue", issue.URL),
-		}
+		issueText = fmt.Sprintf("%s | [%s](%s) %s: %s", issue.IssueType, issue.Key, issue.URL, issue.Status, issue.Summary)
+	} else {
+		issueText = fmt.Sprintf("%s | %s %s: %s", issue.IssueType, issue.Key, issue.Status, issue.Summary)
 	}
 
-	card.Body = append(card.Body, issueHeader)
+	card.AddTextBlock(issueText, "Small", "Bolder", true)
 
 	// Add updates
 	if len(issue.Updates) > 0 {
 		var updateItems []AdaptiveCardElement
-		
+
 		for _, update := range issue.Updates {
 			updateTime := update.Time.In(loc)
 			var updateText string
-			
+
 			switch update.Type {
 			case "comment":
-				updateText = fmt.Sprintf("%s %s commented: %s", 
+				updateText = fmt.Sprintf("%s %s commented: %s",
 					updateTime.Format("15:04"), update.AuthorName, truncateText(update.Content, 200))
 			case "worklog":
-				updateText = fmt.Sprintf("%s %s log work %s: %s", 
+				updateText = fmt.Sprintf("%s %s log work %s: %s",
 					updateTime.Format("15:04"), update.AuthorName, update.TimeSpent, truncateText(update.Content, 200))
 			}
-			
+
 			updateItems = append(updateItems, AdaptiveCardElement{
 				Type: "TextBlock",
 				Text: updateText,

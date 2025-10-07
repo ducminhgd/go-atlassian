@@ -2,6 +2,7 @@ package msteams
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -154,26 +155,24 @@ func TestAddEpicSection(t *testing.T) {
 		t.Error("Expected at least 1 element in card body after adding epic section")
 	}
 
-	// Find the epic header (should be a RichTextBlock)
+	// Find the epic header (should be a TextBlock with Markdown link)
 	var epicHeader *AdaptiveCardElement
 	for i := range card.Body {
-		if card.Body[i].Type == "RichTextBlock" {
+		if card.Body[i].Type == "TextBlock" && card.Body[i].Weight == "Bolder" {
 			epicHeader = &card.Body[i]
 			break
 		}
 	}
 
 	if epicHeader == nil {
-		t.Error("Expected to find RichTextBlock for epic header")
+		t.Error("Expected to find TextBlock for epic header")
 		return
 	}
 
-	if len(epicHeader.Actions) == 0 {
-		t.Error("Expected epic header to have actions")
-	}
-
-	if epicHeader.Actions[0].URL != group.EpicURL {
-		t.Errorf("Expected action URL to be %s, got %s", group.EpicURL, epicHeader.Actions[0].URL)
+	// Check that the epic text contains Markdown-style link
+	expectedText := fmt.Sprintf("[%s](%s) %s: %s", group.EpicKey, group.EpicURL, group.EpicStatus, group.EpicSummary)
+	if epicHeader.Text != expectedText {
+		t.Errorf("Expected epic text to be %s, got %s", expectedText, epicHeader.Text)
 	}
 }
 
@@ -203,25 +202,23 @@ func TestAddIssueSection(t *testing.T) {
 		t.Error("Expected at least 2 elements in card body after adding issue section")
 	}
 
-	// Find the issue header (should be a RichTextBlock)
+	// Find the issue header (should be a TextBlock with Markdown link)
 	var issueHeader *AdaptiveCardElement
 	for i := range card.Body {
-		if card.Body[i].Type == "RichTextBlock" {
+		if card.Body[i].Type == "TextBlock" && card.Body[i].Weight == "Bolder" {
 			issueHeader = &card.Body[i]
 			break
 		}
 	}
 
 	if issueHeader == nil {
-		t.Error("Expected to find RichTextBlock for issue header")
+		t.Error("Expected to find TextBlock for issue header")
 		return
 	}
 
-	if len(issueHeader.Actions) == 0 {
-		t.Error("Expected issue header to have actions")
-	}
-
-	if issueHeader.Actions[0].URL != issue.URL {
-		t.Errorf("Expected action URL to be %s, got %s", issue.URL, issueHeader.Actions[0].URL)
+	// Check that the issue text contains Markdown-style link
+	expectedText := fmt.Sprintf("%s | [%s](%s) %s: %s", issue.IssueType, issue.Key, issue.URL, issue.Status, issue.Summary)
+	if issueHeader.Text != expectedText {
+		t.Errorf("Expected issue text to be %s, got %s", expectedText, issueHeader.Text)
 	}
 }
