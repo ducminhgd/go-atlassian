@@ -24,6 +24,7 @@ type IssueUpdate struct {
 	URL         string
 	Updates     []Update
 	LastUpdated time.Time
+	SubTasks    []IssueUpdate // Sub-tasks belonging to this issue
 }
 
 // Update represents a single update (comment or worklog)
