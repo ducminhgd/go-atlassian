@@ -169,8 +169,8 @@ func TestAddEpicSection(t *testing.T) {
 		return
 	}
 
-	// Check that the epic text contains Markdown-style link
-	expectedText := fmt.Sprintf("[%s](%s) %s: %s", group.EpicKey, group.EpicURL, group.EpicStatus, group.EpicSummary)
+	// Check that the epic text contains Markdown-style link with new format and emoji
+	expectedText := fmt.Sprintf("[%s](%s) | 🔄 %s | %s", group.EpicKey, group.EpicURL, group.EpicStatus, group.EpicSummary)
 	if epicHeader.Text != expectedText {
 		t.Errorf("Expected epic text to be %s, got %s", expectedText, epicHeader.Text)
 	}
@@ -195,7 +195,7 @@ func TestAddIssueSection(t *testing.T) {
 		},
 	}
 
-	addIssueSection(&card, issue, time.UTC)
+	addIssueSection(&card, issue, time.UTC, 1)
 
 	// Should have issue header and updates container
 	if len(card.Body) < 2 {
@@ -216,8 +216,8 @@ func TestAddIssueSection(t *testing.T) {
 		return
 	}
 
-	// Check that the issue text contains Markdown-style link
-	expectedText := fmt.Sprintf("%s | [%s](%s) %s: %s", issue.IssueType, issue.Key, issue.URL, issue.Status, issue.Summary)
+	// Check that the issue text contains Markdown-style link with numbering and emoji
+	expectedText := fmt.Sprintf("1. %s | [%s](%s) | 🔄 %s | %s", issue.IssueType, issue.Key, issue.URL, issue.Status, issue.Summary)
 	if issueHeader.Text != expectedText {
 		t.Errorf("Expected issue text to be %s, got %s", expectedText, issueHeader.Text)
 	}

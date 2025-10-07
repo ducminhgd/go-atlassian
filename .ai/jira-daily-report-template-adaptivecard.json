@@ -9,7 +9,7 @@
     {
       "type": "TextBlock",
       "text": "Daily Report DD-MMM-YYYY",
-      "size": "Large",
+      "size": "ExtraLarge",
       "weight": "Bolder",
       "wrap": true
     },
@@ -21,89 +21,96 @@
       "spacing": "Small"
     },
     {
-      "type": "RichTextBlock",
+      "type": "TextBlock",
+      "text": "[Epic KEY](Epic URL) | Epic Status | Epic Summary",
+      "size": "Large",
+      "weight": "Bolder",
+      "wrap": true,
       "spacing": "Medium",
-      "separator": true,
-      "inlines": [
-        {
-          "type": "TextRun",
-          "text": "Epic KEY Epic Status: Epic Summary",
-          "weight": "Bolder"
-        }
-      ],
-      "actions": [
-        {
-          "type": "Action.OpenUrl",
-          "title": "Open Epic",
-          "url": "Epic URL"
-        }
-      ]
+      "separator": true
     },
     {
-      "type": "RichTextBlock",
-      "spacing": "Small",
-      "inlines": [
-        {
-          "type": "TextRun",
-          "text": "Task Type | Task KEY Task Status: Task Summary",
-          "weight": "Bolder",
-          "color": "Accent"
-        }
-      ],
-      "actions": [
-        {
-          "type": "Action.OpenUrl",
-          "title": "Open Issue",
-          "url": "Task URL"
-        }
-      ]
+      "type": "TextBlock",
+      "text": "1. Task Type | [Task KEY](Task URL) | Task Status | Task Summary",
+      "size": "Medium",
+      "weight": "Bolder",
+      "wrap": true,
+      "spacing": "Small"
     },
     {
-      "type": "Container",
-      "spacing": "Small",
-      "style": "emphasis",
-      "items": [
-        {
-          "type": "TextBlock",
-          "text": "HH:MM Author's name commented: comment-content",
-          "wrap": true,
-          "size": "Small"
-        },
-        {
-          "type": "TextBlock",
-          "text": "HH:MM Author's name log work worklog-time: worklog-content",
-          "wrap": true,
-          "size": "Small"
-        }
-      ]
+      "type": "TextBlock",
+      "text": "    1. HH:MM → Author's name commented: comment-content",
+      "wrap": true,
+      "size": "Small",
+      "spacing": "Small"
+    },
+    {
+      "type": "TextBlock",
+      "text": "    2. HH:MM → Author's name log work worklog-time: worklog-content",
+      "wrap": true,
+      "size": "Small",
+      "spacing": "Small"
+    },
+    {
+      "type": "TextBlock",
+      "text": "    3. HH:MM → Author's name log work worklog-time: worklog-content",
+      "wrap": true,
+      "size": "Small",
+      "spacing": "Small"
+    },
+    {
+      "type": "TextBlock",
+      "text": "4. Sub-Task | [Sub-Task KEY](Sub-Task URL) | Sub-Task Status | Sub-Task Summary",
+      "wrap": true,
+      "size": "Small",
+      "weight": "Bolder",
+      "spacing": "Small"
+    },
+    {
+      "type": "TextBlock",
+      "text": "       1. HH:MM → Author's name commented: comment-content",
+      "wrap": true,
+      "size": "Small",
+      "spacing": "Small"
+    },
+    {
+      "type": "TextBlock",
+      "text": "       2. HH:MM → Author's name commented: comment-content",
+      "wrap": true,
+      "size": "Small",
+      "spacing": "Small"
+    },
+    {
+      "type": "TextBlock",
+      "text": "5. Sub-Task | [Sub-Task KEY](Sub-Task URL) | Sub-Task Status | Sub-Task Summary",
+      "wrap": true,
+      "size": "Small",
+      "weight": "Bolder",
+      "spacing": "Small"
+    },
+    {
+      "type": "TextBlock",
+      "text": "       1. HH:MM → Author's name commented: comment-content",
+      "wrap": true,
+      "size": "Small",
+      "spacing": "Small"
     },
     {
       "type": "TextBlock",
       "text": "Anything else",
-      "size": "Medium",
+      "size": "Large",
       "weight": "Bolder",
       "spacing": "Medium",
       "separator": true,
       "wrap": true
     },
     {
-      "type": "RichTextBlock",
-      "spacing": "Small",
-      "inlines": [
-        {
-          "type": "TextRun",
-          "text": "Task Type | Task KEY Task Status: Task Summary",
-          "weight": "Bolder",
-          "color": "Accent"
-        }
-      ],
-      "actions": [
-        {
-          "type": "Action.OpenUrl",
-          "title": "Open Issue",
-          "url": "Task URL"
-        }
-      ]
+      "type": "TextBlock",
+      "text": "1. Task Type | [Task KEY](Task URL) | Task Status | Task Summary",
+      "size": "Medium",
+      "weight": "Bolder",
+      "wrap": true,
+      "spacing": "Small"
     },
     {
       "type": "Container",
@@ -112,13 +119,13 @@
       "items": [
         {
           "type": "TextBlock",
-          "text": "HH:MM Author's name commented: comment-content",
+          "text": "    1. HH:MM → Author's name commented: comment-content",
           "wrap": true,
           "size": "Small"
         },
         {
           "type": "TextBlock",
-          "text": "HH:MM Author's name log work worklog-time: worklog-content",
+          "text": "    2. HH:MM → Author's name log work worklog-time: worklog-content",
           "wrap": true,
           "size": "Small"
         }
