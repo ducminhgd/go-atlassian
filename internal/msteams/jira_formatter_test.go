@@ -195,7 +195,7 @@ func TestAddIssueSection(t *testing.T) {
 		},
 	}
 
-	addIssueSection(&card, issue, time.UTC, 1)
+	addIssueSection(&card, issue, time.UTC)
 
 	// Should have issue header and updates container
 	if len(card.Body) < 2 {

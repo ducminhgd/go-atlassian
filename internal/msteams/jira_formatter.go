@@ -122,9 +122,8 @@ func addEpicSection(card *AdaptiveCard, group *EpicGroup, loc *time.Location) {
 		return group.Issues[i].LastUpdated.After(group.Issues[j].LastUpdated)
 	})
 
-	// Add issues with hierarchical numbering (1, 2, 3...)
-	for i, issue := range group.Issues {
-		addIssueSection(card, issue, loc, i+1)
+	for _, issue := range group.Issues {
+		addIssueSection(card, issue, loc)
 	}
 }
 
@@ -143,21 +142,20 @@ func addEverythingElseSection(card *AdaptiveCard, noEpicIssues []IssueUpdate, lo
 		return noEpicIssues[i].LastUpdated.After(noEpicIssues[j].LastUpdated)
 	})
 
-	// Add issues with hierarchical numbering (1, 2, 3...)
-	for i, issue := range noEpicIssues {
-		addIssueSection(card, issue, loc, i+1)
+	for _, issue := range noEpicIssues {
+		addIssueSection(card, issue, loc)
 	}
 }
 
 // addIssueSection adds an issue section to the AdaptiveCard
-func addIssueSection(card *AdaptiveCard, issue IssueUpdate, loc *time.Location, number int) {
+func addIssueSection(card *AdaptiveCard, issue IssueUpdate, loc *time.Location) {
 	// Issue header with clickable issue key using Markdown-style link, hierarchical numbering, and status emoji
 	statusEmoji := getStatusEmoji(issue.Status)
 	var issueText string
 	if issue.URL != "" {
-		issueText = fmt.Sprintf("%d. %s | [%s](%s) | %s %s | %s", number, issue.IssueType, issue.Key, issue.URL, statusEmoji, issue.Status, issue.Summary)
+		issueText = fmt.Sprintf("%s | [%s](%s) | %s %s | %s", issue.IssueType, issue.Key, issue.URL, statusEmoji, issue.Status, issue.Summary)
 	} else {
-		issueText = fmt.Sprintf("%d. %s | %s | %s %s | %s", number, issue.IssueType, issue.Key, statusEmoji, issue.Status, issue.Summary)
+		issueText = fmt.Sprintf("%s | %s | %s %s | %s", issue.IssueType, issue.Key, statusEmoji, issue.Status, issue.Summary)
 	}
 
 	card.AddTextBlock(issueText, "Medium", "Bolder", true)
@@ -172,12 +170,12 @@ func addIssueSection(card *AdaptiveCard, issue IssueUpdate, loc *time.Location, 
 
 		switch update.Type {
 		case "comment":
-			updateText = fmt.Sprintf("%d.%d. %s → %s commented: %s", number, itemNumber, updateTime.Format("15:04"), update.AuthorName, truncateText(update.Content, 200))
+			updateText = fmt.Sprintf("%d. %s → %s commented: %s", itemNumber, updateTime.Format("15:04"), update.AuthorName, truncateText(update.Content, 200))
 		case "worklog":
-			updateText = fmt.Sprintf("%d.%d. %s → %s log work %s: %s", number, itemNumber, updateTime.Format("15:04"), update.AuthorName, update.TimeSpent, truncateText(update.Content, 200))
+			updateText = fmt.Sprintf("%d. %s → %s log work %s: %s", itemNumber, updateTime.Format("15:04"), update.AuthorName, update.TimeSpent, truncateText(update.Content, 200))
 		}
 
-		card.AddTextBlock(updateText, "Small", "", true)
+		card.AddTextBlock(updateText, "Default", "", true)
 		itemNumber++
 	}
 
@@ -189,8 +187,8 @@ func addIssueSection(card *AdaptiveCard, issue IssueUpdate, loc *time.Location, 
 		})
 
 		for _, subTask := range issue.SubTasks {
-			addSubTaskSection(card, subTask, loc, number+1)
-			number++
+			addSubTaskSection(card, subTask, loc, itemNumber)
+			itemNumber++
 		}
 	}
 }
@@ -207,21 +205,21 @@ func addSubTaskSection(card *AdaptiveCard, subTask IssueUpdate, loc *time.Locati
 	}
 
 	// Add sub-task header as individual TextBlock
-	card.AddTextBlock(subTaskText, "", "Bolder", true)
+	card.AddTextBlock(subTaskText, "Default", "Bolder", true)
 
 	// Add sub-task updates as individual TextBlocks with indentation
-	for i, update := range subTask.Updates {
+	for _, update := range subTask.Updates {
 		updateTime := update.Time.In(loc)
 		var updateText string
 
 		switch update.Type {
 		case "comment":
-			updateText = fmt.Sprintf("%d.%d. %s → %s commented: %s", itemNumber, i+1, updateTime.Format("15:04"), update.AuthorName, truncateText(update.Content, 200))
+			updateText = fmt.Sprintf("- %s → %s commented: %s", updateTime.Format("15:04"), update.AuthorName, update.Content)
 		case "worklog":
-			updateText = fmt.Sprintf("%d.%d. %s → %s log work %s: %s", itemNumber, i+1, updateTime.Format("15:04"), update.AuthorName, update.TimeSpent, truncateText(update.Content, 200))
+			updateText = fmt.Sprintf("- %s → %s log work %s: %s", updateTime.Format("15:04"), update.AuthorName, update.TimeSpent, update.Content)
 		}
 
-		card.AddTextBlock(updateText, "Small", "", true)
+		card.AddTextBlock(updateText, "Default", "", true)
 	}
 }
 
