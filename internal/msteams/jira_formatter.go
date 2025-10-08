@@ -55,8 +55,19 @@ type Update struct {
 	TimeSpent  string // for worklogs
 }
 
+// SubtitleConfig contains information needed to generate dynamic subtitles
+type SubtitleConfig struct {
+	QueryType     string
+	FilterName    string
+	FilterID      string
+	CustomJQL     string
+	JiraProject   string
+	LookbackHours int
+	JiraHost      string
+}
+
 // FormatJiraReportAsAdaptiveCard formats a Jira report as an AdaptiveCard
-func FormatJiraReportAsAdaptiveCard(epicGroups map[string]*EpicGroup, noEpicIssues []IssueUpdate, reportDate time.Time, timezone string) AdaptiveCard {
+func FormatJiraReportAsAdaptiveCard(epicGroups map[string]*EpicGroup, noEpicIssues []IssueUpdate, reportDate time.Time, timezone string, subtitleConfig SubtitleConfig) AdaptiveCard {
 	// Load timezone
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
@@ -76,8 +87,9 @@ func FormatJiraReportAsAdaptiveCard(epicGroups map[string]*EpicGroup, noEpicIssu
 	)
 
 	// Add subtitle
+	subtitle := generateSubtitle(subtitleConfig)
 	card.AddTextBlock(
-		"> From last updates in the last 24 hours",
+		subtitle,
 		"Medium",
 		"",
 		true,
@@ -102,6 +114,30 @@ func FormatJiraReportAsAdaptiveCard(epicGroups map[string]*EpicGroup, noEpicIssu
 	}
 
 	return card
+}
+
+// generateSubtitle generates a dynamic subtitle based on the query configuration
+func generateSubtitle(config SubtitleConfig) string {
+	switch config.QueryType {
+	case "filter":
+		if config.FilterName != "" && config.FilterID != "" && config.JiraHost != "" {
+			filterURL := fmt.Sprintf("%s/issues/?filter=%s", config.JiraHost, config.FilterID)
+			return fmt.Sprintf("From the [%s](%s)", config.FilterName, filterURL)
+		}
+		return "From the filter"
+	case "custom_jql":
+		if config.CustomJQL != "" {
+			return fmt.Sprintf("From the query: `%s`", config.CustomJQL)
+		}
+		return "From custom query"
+	case "project_hours":
+		fallthrough
+	default:
+		if config.JiraProject != "" {
+			return fmt.Sprintf("From project %s in last %d hours", config.JiraProject, config.LookbackHours)
+		}
+		return "From last updates in the last 24 hours"
+	}
 }
 
 // addEpicSection adds an epic section to the AdaptiveCard

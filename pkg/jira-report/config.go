@@ -31,7 +31,8 @@ type Config struct {
 	CustomJQL string
 
 	// Option 3: Filter ID
-	FilterID string
+	FilterID   string
+	FilterName string // Populated when using filter query type
 }
 
 // NewConfig creates a new Config with default values

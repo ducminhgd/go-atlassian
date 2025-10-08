@@ -65,7 +65,12 @@ func TestFormatJiraReportAsAdaptiveCard(t *testing.T) {
 	}
 
 	// Generate AdaptiveCard
-	card := FormatJiraReportAsAdaptiveCard(epicGroups, noEpicIssues, reportDate, "UTC")
+	subtitleConfig := SubtitleConfig{
+		QueryType:     "project_hours",
+		JiraProject:   "TEST",
+		LookbackHours: 24,
+	}
+	card := FormatJiraReportAsAdaptiveCard(epicGroups, noEpicIssues, reportDate, "UTC", subtitleConfig)
 
 	// Verify basic structure
 	if card.Type != "AdaptiveCard" {
@@ -216,8 +221,8 @@ func TestAddIssueSection(t *testing.T) {
 		return
 	}
 
-	// Check that the issue text contains Markdown-style link with numbering and emoji
-	expectedText := fmt.Sprintf("1. %s | [%s](%s) | 🔄 %s | %s", issue.IssueType, issue.Key, issue.URL, issue.Status, issue.Summary)
+	// Check that the issue text contains Markdown-style link and emoji (no numbering in header)
+	expectedText := fmt.Sprintf("%s | [%s](%s) | 🔄 %s | %s", issue.IssueType, issue.Key, issue.URL, issue.Status, issue.Summary)
 	if issueHeader.Text != expectedText {
 		t.Errorf("Expected issue text to be %s, got %s", expectedText, issueHeader.Text)
 	}

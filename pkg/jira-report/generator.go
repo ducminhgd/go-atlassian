@@ -311,12 +311,16 @@ func (g *Generator) getFilterJQL(ctx context.Context) (string, error) {
 	}
 
 	var filterResponse struct {
-		JQL string `json:"jql"`
+		JQL  string `json:"jql"`
+		Name string `json:"name"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&filterResponse); err != nil {
 		return "", fmt.Errorf("failed to decode filter response: %w", err)
 	}
+
+	// Store filter name in config for subtitle generation
+	g.config.FilterName = filterResponse.Name
 
 	return filterResponse.JQL, nil
 }
@@ -416,7 +420,18 @@ func (g *Generator) formatAdaptiveCardReport(epicGroups map[string]*EpicGroup, n
 
 	msteamsNoEpicIssues := convertIssueUpdates(noEpicIssues)
 
-	return msteams.FormatJiraReportAsAdaptiveCard(msteamsEpicGroups, msteamsNoEpicIssues, reportDate, timezone)
+	// Create subtitle config
+	subtitleConfig := msteams.SubtitleConfig{
+		QueryType:     string(g.config.QueryType),
+		FilterName:    g.config.FilterName,
+		FilterID:      g.config.FilterID,
+		CustomJQL:     g.config.CustomJQL,
+		JiraProject:   g.config.JiraProject,
+		LookbackHours: g.config.LookbackHours,
+		JiraHost:      g.config.JiraHost,
+	}
+
+	return msteams.FormatJiraReportAsAdaptiveCard(msteamsEpicGroups, msteamsNoEpicIssues, reportDate, timezone, subtitleConfig)
 }
 
 // convertIssueUpdates converts internal IssueUpdate slice to msteams IssueUpdate slice
