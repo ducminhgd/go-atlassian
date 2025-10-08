@@ -491,36 +491,3 @@ func convertUpdates(updates []Update) []msteams.Update {
 	}
 	return msteamsUpdates
 }
-
-// FormatAsAdaptiveCard creates an AdaptiveCard from the provided data
-// This is a public function that allows external users to create AdaptiveCards
-// without needing access to the internal msteams package
-func FormatAsAdaptiveCard(epicGroups map[string]*EpicGroup, noEpicIssues []IssueUpdate, reportDate time.Time, timezone string) msteams.AdaptiveCard {
-	// Convert public types to internal msteams types
-	msteamsEpicGroups := make(map[string]*msteams.EpicGroup)
-	for key, group := range epicGroups {
-		msteamsEpicGroups[key] = &msteams.EpicGroup{
-			EpicKey:     group.EpicKey,
-			EpicSummary: group.EpicSummary,
-			EpicStatus:  group.EpicStatus,
-			EpicURL:     group.EpicURL,
-			Issues:      convertIssueUpdates(group.Issues),
-		}
-	}
-
-	msteamsNoEpicIssues := convertIssueUpdates(noEpicIssues)
-
-	// Create a basic subtitle config for standalone usage
-	subtitleConfig := msteams.SubtitleConfig{
-		QueryType:     "manual",
-		LookbackHours: 24,
-	}
-
-	return msteams.FormatJiraReportAsAdaptiveCard(msteamsEpicGroups, msteamsNoEpicIssues, reportDate, timezone, subtitleConfig)
-}
-
-// FormatAsTeamsMessage creates a Teams message from an AdaptiveCard
-// This wraps the AdaptiveCard in the proper Teams message structure
-func FormatAsTeamsMessage(adaptiveCard msteams.AdaptiveCard) msteams.TeamsMessage {
-	return msteams.FormatTeamsMessage(adaptiveCard)
-}
