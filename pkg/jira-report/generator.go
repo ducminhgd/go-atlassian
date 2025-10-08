@@ -69,11 +69,10 @@ func (g *Generator) Generate(ctx context.Context) (*Report, error) {
 	epicGroups := make(map[string]*EpicGroup)
 	var noEpicIssues []IssueUpdate
 	processedIssues := make(map[string]*IssueUpdate) // Track processed issues to avoid duplicates
-	addedToReport := make(map[string]bool)           // Track which issues have been added to the final report
 
 	for _, iss := range response.Issues {
 		// Skip if this issue has already been processed and added to the report
-		if addedToReport[iss.Key] {
+		if existingIssue, exists := processedIssues[iss.Key]; exists && existingIssue.AddedToReport {
 			continue
 		}
 
@@ -93,13 +92,13 @@ func (g *Generator) Generate(ctx context.Context) (*Report, error) {
 				parentIssue.SubTasks = append(parentIssue.SubTasks, issueUpdate)
 
 				// If parent exists but hasn't been added to report yet, add it now
-				if !addedToReport[parentTaskKey] {
+				if !parentIssue.AddedToReport {
 					if epicKey != "" {
 						epicGroups[epicKey].Issues = append(epicGroups[epicKey].Issues, *parentIssue)
 					} else {
 						noEpicIssues = append(noEpicIssues, *parentIssue)
 					}
-					addedToReport[parentTaskKey] = true
+					parentIssue.AddedToReport = true
 				}
 			} else {
 				// Parent task not yet processed, fetch it and treat as updated
@@ -109,28 +108,29 @@ func (g *Generator) Generate(ctx context.Context) (*Report, error) {
 					processedIssues[parentTaskKey] = parentTask
 
 					// Only add parent task to report if it hasn't been added yet
-					if !addedToReport[parentTaskKey] {
+					if !parentTask.AddedToReport {
 						if epicKey != "" {
 							epicGroups[epicKey].Issues = append(epicGroups[epicKey].Issues, *parentTask)
 						} else {
 							noEpicIssues = append(noEpicIssues, *parentTask)
 						}
-						addedToReport[parentTaskKey] = true
+						parentTask.AddedToReport = true
 					}
 				}
 			}
 			// Mark this sub-task as processed (it's included in its parent)
-			addedToReport[iss.Key] = true
+			processedIssues[iss.Key] = &issueUpdate
+			processedIssues[iss.Key].AddedToReport = true
 		} else {
 			// This is a top-level task or epic-level task
 			// Only add to report if it hasn't been added yet
-			if !addedToReport[iss.Key] {
+			if !processedIssues[iss.Key].AddedToReport {
 				if epicKey != "" {
 					epicGroups[epicKey].Issues = append(epicGroups[epicKey].Issues, issueUpdate)
 				} else {
 					noEpicIssues = append(noEpicIssues, issueUpdate)
 				}
-				addedToReport[iss.Key] = true
+				processedIssues[iss.Key].AddedToReport = true
 			}
 		}
 	}
@@ -464,14 +464,15 @@ func convertIssueUpdates(issues []IssueUpdate) []msteams.IssueUpdate {
 	var msteamsIssues []msteams.IssueUpdate
 	for _, issue := range issues {
 		msteamsIssues = append(msteamsIssues, msteams.IssueUpdate{
-			Key:         issue.Key,
-			Summary:     issue.Summary,
-			Status:      issue.Status,
-			IssueType:   issue.IssueType,
-			URL:         issue.URL,
-			Updates:     convertUpdates(issue.Updates),
-			LastUpdated: issue.LastUpdated,
-			SubTasks:    convertIssueUpdates(issue.SubTasks), // Recursive conversion for sub-tasks
+			Key:           issue.Key,
+			Summary:       issue.Summary,
+			Status:        issue.Status,
+			IssueType:     issue.IssueType,
+			URL:           issue.URL,
+			Updates:       convertUpdates(issue.Updates),
+			LastUpdated:   issue.LastUpdated,
+			SubTasks:      convertIssueUpdates(issue.SubTasks), // Recursive conversion for sub-tasks
+			AddedToReport: issue.AddedToReport,
 		})
 	}
 	return msteamsIssues

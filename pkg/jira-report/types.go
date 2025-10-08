@@ -17,14 +17,15 @@ type EpicGroup struct {
 
 // IssueUpdate represents an issue with its updates
 type IssueUpdate struct {
-	Key         string
-	Summary     string
-	Status      string
-	IssueType   string
-	URL         string
-	Updates     []Update
-	LastUpdated time.Time
-	SubTasks    []IssueUpdate // Sub-tasks belonging to this issue
+	Key           string
+	Summary       string
+	Status        string
+	IssueType     string
+	URL           string
+	Updates       []Update
+	LastUpdated   time.Time
+	SubTasks      []IssueUpdate // Sub-tasks belonging to this issue
+	AddedToReport bool          // Track if this issue has been added to the final report
 }
 
 // Update represents a single update (comment or worklog)
