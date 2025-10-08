@@ -69,8 +69,14 @@ func (g *Generator) Generate(ctx context.Context) (*Report, error) {
 	epicGroups := make(map[string]*EpicGroup)
 	var noEpicIssues []IssueUpdate
 	processedIssues := make(map[string]*IssueUpdate) // Track processed issues to avoid duplicates
+	addedToReport := make(map[string]bool)           // Track which issues have been added to the final report
 
 	for _, iss := range response.Issues {
+		// Skip if this issue has already been processed and added to the report
+		if addedToReport[iss.Key] {
+			continue
+		}
+
 		issueUpdate := g.processIssue(iss, lookbackTime)
 		if len(issueUpdate.Updates) == 0 {
 			continue // Skip issues with no relevant updates
@@ -85,6 +91,16 @@ func (g *Generator) Generate(ctx context.Context) (*Report, error) {
 			// This is a sub-task, add it to its parent task
 			if parentIssue, exists := processedIssues[parentTaskKey]; exists {
 				parentIssue.SubTasks = append(parentIssue.SubTasks, issueUpdate)
+
+				// If parent exists but hasn't been added to report yet, add it now
+				if !addedToReport[parentTaskKey] {
+					if epicKey != "" {
+						epicGroups[epicKey].Issues = append(epicGroups[epicKey].Issues, *parentIssue)
+					} else {
+						noEpicIssues = append(noEpicIssues, *parentIssue)
+					}
+					addedToReport[parentTaskKey] = true
+				}
 			} else {
 				// Parent task not yet processed, fetch it and treat as updated
 				parentTask, err := g.fetchAndProcessParentTask(ctx, parentTaskKey, lookbackTime)
@@ -92,20 +108,29 @@ func (g *Generator) Generate(ctx context.Context) (*Report, error) {
 					parentTask.SubTasks = append(parentTask.SubTasks, issueUpdate)
 					processedIssues[parentTaskKey] = parentTask
 
-					// Determine where to place the parent task
-					if epicKey != "" {
-						epicGroups[epicKey].Issues = append(epicGroups[epicKey].Issues, *parentTask)
-					} else {
-						noEpicIssues = append(noEpicIssues, *parentTask)
+					// Only add parent task to report if it hasn't been added yet
+					if !addedToReport[parentTaskKey] {
+						if epicKey != "" {
+							epicGroups[epicKey].Issues = append(epicGroups[epicKey].Issues, *parentTask)
+						} else {
+							noEpicIssues = append(noEpicIssues, *parentTask)
+						}
+						addedToReport[parentTaskKey] = true
 					}
 				}
 			}
+			// Mark this sub-task as processed (it's included in its parent)
+			addedToReport[iss.Key] = true
 		} else {
 			// This is a top-level task or epic-level task
-			if epicKey != "" {
-				epicGroups[epicKey].Issues = append(epicGroups[epicKey].Issues, issueUpdate)
-			} else {
-				noEpicIssues = append(noEpicIssues, issueUpdate)
+			// Only add to report if it hasn't been added yet
+			if !addedToReport[iss.Key] {
+				if epicKey != "" {
+					epicGroups[epicKey].Issues = append(epicGroups[epicKey].Issues, issueUpdate)
+				} else {
+					noEpicIssues = append(noEpicIssues, issueUpdate)
+				}
+				addedToReport[iss.Key] = true
 			}
 		}
 	}
@@ -465,4 +490,37 @@ func convertUpdates(updates []Update) []msteams.Update {
 		})
 	}
 	return msteamsUpdates
+}
+
+// FormatAsAdaptiveCard creates an AdaptiveCard from the provided data
+// This is a public function that allows external users to create AdaptiveCards
+// without needing access to the internal msteams package
+func FormatAsAdaptiveCard(epicGroups map[string]*EpicGroup, noEpicIssues []IssueUpdate, reportDate time.Time, timezone string) msteams.AdaptiveCard {
+	// Convert public types to internal msteams types
+	msteamsEpicGroups := make(map[string]*msteams.EpicGroup)
+	for key, group := range epicGroups {
+		msteamsEpicGroups[key] = &msteams.EpicGroup{
+			EpicKey:     group.EpicKey,
+			EpicSummary: group.EpicSummary,
+			EpicStatus:  group.EpicStatus,
+			EpicURL:     group.EpicURL,
+			Issues:      convertIssueUpdates(group.Issues),
+		}
+	}
+
+	msteamsNoEpicIssues := convertIssueUpdates(noEpicIssues)
+
+	// Create a basic subtitle config for standalone usage
+	subtitleConfig := msteams.SubtitleConfig{
+		QueryType:     "manual",
+		LookbackHours: 24,
+	}
+
+	return msteams.FormatJiraReportAsAdaptiveCard(msteamsEpicGroups, msteamsNoEpicIssues, reportDate, timezone, subtitleConfig)
+}
+
+// FormatAsTeamsMessage creates a Teams message from an AdaptiveCard
+// This wraps the AdaptiveCard in the proper Teams message structure
+func FormatAsTeamsMessage(adaptiveCard msteams.AdaptiveCard) msteams.TeamsMessage {
+	return msteams.FormatTeamsMessage(adaptiveCard)
 }
