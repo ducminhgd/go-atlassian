@@ -65,13 +65,13 @@ func (g *Generator) Generate(ctx context.Context) (*Report, error) {
 		return nil, fmt.Errorf("%w: %v", ErrSearchIssues, err)
 	}
 
-	// Process issues and group by epic
+	// Process issues and build hierarchical tree structure
 	epicGroups := make(map[string]*EpicGroup)
 	var noEpicIssues []IssueUpdate
-	processedIssues := make(map[string]*IssueUpdate) // Track processed issues to avoid duplicates
+	processedIssues := make(map[string]*IssueUpdate) // Track all processed issues
 
 	for _, iss := range response.Issues {
-		// Skip if this issue has already been processed and added to the report
+		// Skip if this issue has already been processed and added to report
 		if existingIssue, exists := processedIssues[iss.Key]; exists && existingIssue.AddedToReport {
 			continue
 		}
@@ -81,58 +81,11 @@ func (g *Generator) Generate(ctx context.Context) (*Report, error) {
 			continue // Skip issues with no relevant updates
 		}
 
+		// Store the processed issue
 		processedIssues[iss.Key] = &issueUpdate
 
-		// Handle parent-child relationships
-		epicKey, parentTaskKey := g.determineParentRelationships(ctx, iss, epicGroups)
-
-		if parentTaskKey != "" {
-			// This is a sub-task, add it to its parent task
-			if parentIssue, exists := processedIssues[parentTaskKey]; exists {
-				parentIssue.SubTasks = append(parentIssue.SubTasks, issueUpdate)
-
-				// If parent exists but hasn't been added to report yet, add it now
-				if !parentIssue.AddedToReport {
-					if epicKey != "" {
-						epicGroups[epicKey].Issues = append(epicGroups[epicKey].Issues, *parentIssue)
-					} else {
-						noEpicIssues = append(noEpicIssues, *parentIssue)
-					}
-					parentIssue.AddedToReport = true
-				}
-			} else {
-				// Parent task not yet processed, fetch it and treat as updated
-				parentTask, err := g.fetchAndProcessParentTask(ctx, parentTaskKey, lookbackTime)
-				if err == nil {
-					parentTask.SubTasks = append(parentTask.SubTasks, issueUpdate)
-					processedIssues[parentTaskKey] = parentTask
-
-					// Only add parent task to report if it hasn't been added yet
-					if !parentTask.AddedToReport {
-						if epicKey != "" {
-							epicGroups[epicKey].Issues = append(epicGroups[epicKey].Issues, *parentTask)
-						} else {
-							noEpicIssues = append(noEpicIssues, *parentTask)
-						}
-						parentTask.AddedToReport = true
-					}
-				}
-			}
-			// Mark this sub-task as processed (it's included in its parent)
-			processedIssues[iss.Key] = &issueUpdate
-			processedIssues[iss.Key].AddedToReport = true
-		} else {
-			// This is a top-level task or epic-level task
-			// Only add to report if it hasn't been added yet
-			if !processedIssues[iss.Key].AddedToReport {
-				if epicKey != "" {
-					epicGroups[epicKey].Issues = append(epicGroups[epicKey].Issues, issueUpdate)
-				} else {
-					noEpicIssues = append(noEpicIssues, issueUpdate)
-				}
-				processedIssues[iss.Key].AddedToReport = true
-			}
-		}
+		// Build the hierarchical tree based on issue level
+		g.addIssueToHierarchy(ctx, iss, &issueUpdate, epicGroups, &noEpicIssues, processedIssues, lookbackTime)
 	}
 
 	// Generate markdown and AdaptiveCard reports
@@ -145,53 +98,111 @@ func (g *Generator) Generate(ctx context.Context) (*Report, error) {
 	}, nil
 }
 
-// determineParentRelationships determines the epic and parent task relationships for an issue
-func (g *Generator) determineParentRelationships(ctx context.Context, iss issue.Issue, epicGroups map[string]*EpicGroup) (epicKey, parentTaskKey string) {
+// addIssueToHierarchy adds an issue to the appropriate place in the hierarchical tree
+func (g *Generator) addIssueToHierarchy(ctx context.Context, originalIssue issue.Issue, issueUpdate *IssueUpdate, epicGroups map[string]*EpicGroup, noEpicIssues *[]IssueUpdate, processedIssues map[string]*IssueUpdate, lookbackTime time.Time) {
+	// Skip if already added to report
+	if issueUpdate.AddedToReport {
+		return
+	}
+
+	// Determine the hierarchy level and parent relationships using original issue data
+	parentKey, epicKey := g.findParentAndEpicFromIssue(originalIssue)
+
+	if parentKey == "" {
+		// Level 1 (Epic) or Level 2 (Story/Task without Epic)
+		g.addTopLevelIssue(issueUpdate, epicKey, epicGroups, noEpicIssues)
+	} else {
+		// Level 3 (Subtask) - find or create parent (Level 2)
+		g.addSubtaskToParent(ctx, issueUpdate, parentKey, epicKey, epicGroups, noEpicIssues, processedIssues, lookbackTime)
+	}
+}
+
+// findParentAndEpicFromIssue determines the parent and epic for an issue using existing data
+func (g *Generator) findParentAndEpicFromIssue(iss issue.Issue) (parentKey, epicKey string) {
 	if iss.Fields.Parent.Key == "" {
+		// No parent - this is either Epic or top-level Story/Task
 		return "", ""
 	}
 
-	// Get parent issue
-	parentIssue, err := g.issueService.Get(ctx, iss.Fields.Parent.Key, nil, []string{"summary", "status", "issuetype", "parent"}, nil)
+	parentKey = iss.Fields.Parent.Key
+
+	// We need to fetch parent details to determine hierarchy
+	// This is unavoidable as we need to know if parent is Epic or Story/Task
+	parentDetails, err := g.issueService.Get(context.Background(), parentKey, nil, []string{"parent", "issuetype"}, nil)
 	if err != nil {
-		return "", ""
+		return parentKey, ""
 	}
 
-	if parentIssue.Fields.IssueType.Name == "Epic" {
-		// Parent is an epic
-		epicKey = parentIssue.Key
-		if _, exists := epicGroups[epicKey]; !exists {
+	if parentDetails.Fields.IssueType.Name == "Epic" {
+		// Parent is Epic (Level 1) - current issue is Level 2
+		return "", parentKey
+	} else {
+		// Parent is Story/Task (Level 2) - current issue is Level 3
+		// Check if parent has an Epic (grandparent)
+		if parentDetails.Fields.Parent.Key != "" {
+			grandParentDetails, err := g.issueService.Get(context.Background(), parentDetails.Fields.Parent.Key, nil, []string{"issuetype"}, nil)
+			if err == nil && grandParentDetails.Fields.IssueType.Name == "Epic" {
+				epicKey = grandParentDetails.Key
+			}
+		}
+		return parentKey, epicKey
+	}
+}
+
+// addTopLevelIssue adds a top-level issue (Epic or Story/Task) to the appropriate group
+func (g *Generator) addTopLevelIssue(issue *IssueUpdate, epicKey string, epicGroups map[string]*EpicGroup, noEpicIssues *[]IssueUpdate) {
+	if epicKey != "" {
+		// This issue belongs to an Epic - ensure Epic group exists
+		g.ensureEpicGroupExists(epicKey, epicGroups)
+		epicGroups[epicKey].Issues = append(epicGroups[epicKey].Issues, *issue)
+	} else {
+		// No Epic - add to standalone issues
+		*noEpicIssues = append(*noEpicIssues, *issue)
+	}
+	issue.AddedToReport = true
+}
+
+// addSubtaskToParent adds a subtask to its parent task
+func (g *Generator) addSubtaskToParent(ctx context.Context, subtask *IssueUpdate, parentKey, epicKey string, epicGroups map[string]*EpicGroup, noEpicIssues *[]IssueUpdate, processedIssues map[string]*IssueUpdate, lookbackTime time.Time) {
+	// Check if parent is already processed
+	if parentIssue, exists := processedIssues[parentKey]; exists {
+		// Parent exists - add subtask to it
+		parentIssue.SubTasks = append(parentIssue.SubTasks, *subtask)
+
+		// Ensure parent is added to report if not already
+		if !parentIssue.AddedToReport {
+			g.addTopLevelIssue(parentIssue, epicKey, epicGroups, noEpicIssues)
+		}
+	} else {
+		// Parent not processed yet - fetch and process it
+		parentTask, err := g.fetchAndProcessParentTask(ctx, parentKey, lookbackTime)
+		if err == nil {
+			parentTask.SubTasks = append(parentTask.SubTasks, *subtask)
+			processedIssues[parentKey] = parentTask
+
+			// Add parent to report
+			g.addTopLevelIssue(parentTask, epicKey, epicGroups, noEpicIssues)
+		}
+	}
+
+	// Mark subtask as processed (it's included in its parent)
+	subtask.AddedToReport = true
+}
+
+// ensureEpicGroupExists creates an Epic group if it doesn't exist
+func (g *Generator) ensureEpicGroupExists(epicKey string, epicGroups map[string]*EpicGroup) {
+	if _, exists := epicGroups[epicKey]; !exists {
+		// Fetch Epic details
+		epicDetails, err := g.issueService.Get(context.Background(), epicKey, nil, []string{"summary", "status", "issuetype"}, nil)
+		if err == nil {
 			epicGroups[epicKey] = &EpicGroup{
-				EpicKey:     parentIssue.Key,
-				EpicSummary: parentIssue.Fields.Summary,
-				EpicStatus:  parentIssue.Fields.Status.Name,
-				EpicURL:     fmt.Sprintf("%s/browse/%s", g.config.JiraHost, parentIssue.Key),
+				EpicKey:     epicKey,
+				EpicSummary: epicDetails.Fields.Summary,
+				EpicStatus:  epicDetails.Fields.Status.Name,
+				EpicURL:     fmt.Sprintf("%s/browse/%s", g.config.JiraHost, epicKey),
 				Issues:      []IssueUpdate{},
 			}
 		}
-		return epicKey, ""
-	} else {
-		// Parent is a task/story, this is a sub-task
-		parentTaskKey = parentIssue.Key
-
-		// Check if the parent task has an epic
-		if parentIssue.Fields.Parent.Key != "" {
-			grandParent, err := g.issueService.Get(ctx, parentIssue.Fields.Parent.Key, nil, []string{"summary", "status", "issuetype"}, nil)
-			if err == nil && grandParent.Fields.IssueType.Name == "Epic" {
-				epicKey = grandParent.Key
-				if _, exists := epicGroups[epicKey]; !exists {
-					epicGroups[epicKey] = &EpicGroup{
-						EpicKey:     grandParent.Key,
-						EpicSummary: grandParent.Fields.Summary,
-						EpicStatus:  grandParent.Fields.Status.Name,
-						EpicURL:     fmt.Sprintf("%s/browse/%s", g.config.JiraHost, grandParent.Key),
-						Issues:      []IssueUpdate{},
-					}
-				}
-			}
-		}
-
-		return epicKey, parentTaskKey
 	}
 }
 
